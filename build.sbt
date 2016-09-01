@@ -2,7 +2,7 @@ import AssemblyKeys._
 
 assemblySettings
 
-name := "template-scala-parallel-vanilla"
+name := "dreamhouse-recommendations"
 
 organization := "io.prediction"
 
