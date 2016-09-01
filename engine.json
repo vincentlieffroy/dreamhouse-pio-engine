@@ -1,7 +1,7 @@
 {
   "id": "default",
   "description": "Default settings",
-  "engineFactory": "org.template.recommendation.RecommendationEngine",
+  "engineFactory": "SimilarProductEngine",
   "datasource": {
     "params" : {
       "appName": "dreamhouse-recommendations"
