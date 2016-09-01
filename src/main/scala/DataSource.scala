@@ -1,106 +1,38 @@
-import io.prediction.controller.PDataSource
-import io.prediction.controller.EmptyEvaluationInfo
-import io.prediction.controller.EmptyActualResult
-import io.prediction.controller.Params
-import io.prediction.data.store.PEventStore
-
+import io.prediction.controller.{EmptyActualResult, EmptyEvaluationInfo, PDataSource, Params}
+import org.apache.commons.httpclient.HttpClient
+import org.apache.commons.httpclient.methods.GetMethod
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.json4s.JsonAST.{JArray, JField, JObject, JString}
+import org.json4s.jackson.JsonMethods._
 
-import grizzled.slf4j.Logger
+case class DataSourceParams(appName: String, dreamHouseWebAppUrl: String) extends Params
 
-case class DataSourceParams(appName: String) extends Params
+class DataSource(val dsp: DataSourceParams) extends PDataSource[TrainingData, EmptyEvaluationInfo, Query, EmptyActualResult] {
 
-class DataSource(val dsp: DataSourceParams)
-  extends PDataSource[TrainingData,
-      EmptyEvaluationInfo, Query, EmptyActualResult] {
+  override def readTraining(sc: SparkContext): TrainingData = {
 
-  @transient lazy val logger = Logger[this.type]
+    val httpClient = new HttpClient()
 
-  override
-  def readTraining(sc: SparkContext): TrainingData = {
+    val getFavorites = new GetMethod(dsp.dreamHouseWebAppUrl + "/favorite-all")
 
-    // create a RDD of (entityID, User)
-    val usersRDD: RDD[(String, User)] = PEventStore.aggregateProperties(
-      appName = dsp.appName,
-      entityType = "user"
-    )(sc).map { case (entityId, properties) =>
-      val user = try {
-        User()
-      } catch {
-        case e: Exception =>
-          logger.error(s"Failed to get properties $properties of" +
-            s" user $entityId. Exception: $e.")
-          throw e
-      }
-      (entityId, user)
-    }.cache()
+    httpClient.executeMethod(getFavorites)
 
-    // create a RDD of (entityID, Item)
-    val itemsRDD: RDD[(String, Item)] = PEventStore.aggregateProperties(
-      appName = dsp.appName,
-      entityType = "item"
-    )(sc).map { case (entityId, properties) =>
-      val item = try {
-        // Assume categories is optional property of item.
-        Item(categories = properties.getOpt[List[String]]("categories"))
-      } catch {
-        case e: Exception =>
-          logger.error(s"Failed to get properties $properties of" +
-            s" item $entityId. Exception: $e.")
-          throw e
-      }
-      (entityId, item)
-    }.cache()
+    val json = parse(getFavorites.getResponseBodyAsStream)
 
-    // get all "user" "view" "item" events
-    val viewEventsRDD: RDD[ViewEvent] = PEventStore.find(
-      appName = dsp.appName,
-      entityType = Some("user"),
-      eventNames = Some(List("view")),
-      // targetEntityType is optional field of an event.
-      targetEntityType = Some(Some("item")))(sc)
-      // eventsDb.find() returns RDD[Event]
-      .map { event =>
-        val viewEvent = try {
-          event.event match {
-            case "view" => ViewEvent(
-              user = event.entityId,
-              item = event.targetEntityId.get,
-              t = event.eventTime.getMillis)
-            case _ => throw new Exception(s"Unexpected event $event is read.")
-          }
-        } catch {
-          case e: Exception =>
-            logger.error(s"Cannot convert $event to ViewEvent." +
-              s" Exception: $e.")
-            throw e
-        }
-        viewEvent
-      }.cache()
+    val favorites = for {
+      JArray(favorites) <- json
+      JObject(favorite) <- favorites
+      JField("sfid", JString(propertyId)) <- favorite
+      JField("favorite__c_user__c", JString(userId)) <- favorite
+    } yield Favorite(propertyId, userId)
 
-    new TrainingData(
-      users = usersRDD,
-      items = itemsRDD,
-      viewEvents = viewEventsRDD
-    )
+    val rdd = sc.parallelize[Favorite](favorites)
+
+    TrainingData(rdd)
   }
 }
 
-case class User()
+case class Favorite(propertyId: String, userId: String)
 
-case class Item(categories: Option[List[String]])
-
-case class ViewEvent(user: String, item: String, t: Long)
-
-class TrainingData(
-  val users: RDD[(String, User)],
-  val items: RDD[(String, Item)],
-  val viewEvents: RDD[ViewEvent]
-) extends Serializable {
-  override def toString = {
-    s"users: [${users.count()} (${users.take(2).toList}...)]" +
-    s"items: [${items.count()} (${items.take(2).toList}...)]" +
-    s"viewEvents: [${viewEvents.count()}] (${viewEvents.take(2).toList}...)"
-  }
-}
+case class TrainingData(favorites: RDD[Favorite])
