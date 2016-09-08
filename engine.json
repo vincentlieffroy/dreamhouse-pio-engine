@@ -2,12 +2,6 @@
   "id": "default",
   "description": "Default settings",
   "engineFactory": "SimilarProductEngine",
-  "datasource": {
-    "params" : {
-      "appName": "dreamhouse",
-      "dreamHouseWebAppUrl": "http://green-dreamhouse-web-app.herokuapp.com"
-    }
-  },
   "algorithms": [
     {
       "name": "als",

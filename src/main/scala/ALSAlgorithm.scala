@@ -1,12 +1,9 @@
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
-
 import io.prediction.controller.{P2LAlgorithm, Params, PersistentModel, PersistentModelLoader}
 import io.prediction.data.storage.jdbc.JDBCModels
 import io.prediction.data.storage.{BiMap, Model, Storage}
 import io.prediction.workflow.KryoInstantiator
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.recommendation.{ALS, MatrixFactorizationModel, Rating}
-import org.apache.spark.rdd.RDD
 
 case class ALSAlgorithmParams(rank: Int, numIterations: Int, lambda: Double) extends Params
 

@@ -1,4 +1,4 @@
-import io.prediction.controller.{EmptyActualResult, EmptyEvaluationInfo, PDataSource, Params}
+import io.prediction.controller.{EmptyActualResult, EmptyEvaluationInfo, PDataSource}
 import org.apache.commons.httpclient.HttpClient
 import org.apache.commons.httpclient.methods.GetMethod
 import org.apache.spark.SparkContext
@@ -6,15 +6,16 @@ import org.apache.spark.rdd.RDD
 import org.json4s.JsonAST.{JArray, JField, JObject, JString}
 import org.json4s.jackson.JsonMethods._
 
-case class DataSourceParams(appName: String, dreamHouseWebAppUrl: String) extends Params
 
-class DataSource(val dsp: DataSourceParams) extends PDataSource[TrainingData, EmptyEvaluationInfo, Query, EmptyActualResult] {
+class DataSource extends PDataSource[TrainingData, EmptyEvaluationInfo, Query, EmptyActualResult] {
 
   override def readTraining(sc: SparkContext): TrainingData = {
 
+    val dreamHouseWebAppUrl = sys.env("DREAMHOUSE_WEB_APP_URL")
+
     val httpClient = new HttpClient()
 
-    val getFavorites = new GetMethod(dsp.dreamHouseWebAppUrl + "/favorite-all")
+    val getFavorites = new GetMethod(dreamHouseWebAppUrl + "/favorite-all")
 
     httpClient.executeMethod(getFavorites)
 
