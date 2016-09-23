@@ -1,37 +1,73 @@
 import io.prediction.controller.{EmptyActualResult, EmptyEvaluationInfo, PDataSource}
-import org.apache.commons.httpclient.HttpClient
-import org.apache.commons.httpclient.methods.GetMethod
 import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
-import org.json4s.JsonAST.{JArray, JField, JObject, JString}
-import org.json4s.jackson.JsonMethods._
+import java.sql.{DriverManager, ResultSet, Statement}
 
+import io.prediction.data.storage.Storage
+
+import scala.reflect.ClassTag
+import org.apache.spark.rdd.{JdbcRDD, RDD}
+
+import scala.util.{Success, Try}
 
 class DataSource extends PDataSource[TrainingData, EmptyEvaluationInfo, Query, EmptyActualResult] {
-
   override def readTraining(sc: SparkContext): TrainingData = {
+    val query = s"SELECT property__c, user__c FROM ${DataSource.schema}.favorite__c WHERE ? <= id AND id <= ?"
 
-    val dreamHouseWebAppUrl = sys.env("DREAMHOUSE_WEB_APP_URL")
+    def mapRow(row: ResultSet) = Favorite(row.getString("property__c"), row.getString("user__c"))
 
-    val httpClient = new HttpClient()
-
-    val getFavorites = new GetMethod(dreamHouseWebAppUrl + "/favorite-all")
-
-    httpClient.executeMethod(getFavorites)
-
-    val json = parse(getFavorites.getResponseBodyAsStream)
-
-    val favorites = for {
-      JArray(favorites) <- json
-      JObject(favorite) <- favorites
-      JField("sfid", JString(propertyId)) <- favorite
-      JField("favorite__c_user__c", JString(userId)) <- favorite
-    } yield Favorite(propertyId, userId)
-
-    val rdd = sc.parallelize[Favorite](favorites)
-
-    TrainingData(rdd)
+    TrainingData(DataSource.jdbcRDD(sc, query, mapRow))
   }
+}
+
+object DataSource {
+  def conn() = {
+    val config = Storage.getConfig("PGSQL").get
+
+    DriverManager.getConnection(
+      config.properties("URL"),
+      config.properties("USERNAME"),
+      config.properties("PASSWORD"))
+  }
+
+  def jdbcRDD[T: ClassTag](sc: SparkContext, query: String, mapRow: ResultSet => T): RDD[T] = {
+    new JdbcRDD(sc, conn, query, Long.MinValue, Long.MaxValue, 1, mapRow).cache()
+  }
+
+  def withStatement[A](f: Statement => A): Try[A] = {
+    Try(f(conn().createStatement()))
+  }
+
+  lazy val schema = {
+    val theSchema = withStatement(_.executeQuery("SELECT count(id) FROM salesforce.favorite__c")) match {
+      case s: Success[ResultSet] => "salesforce"
+      case _ => "public"
+    }
+
+    if (theSchema == "public") { loadDemoData() }
+
+    theSchema
+  }
+
+  def loadDemoData() = {
+    withStatement(_.executeQuery(
+      """CREATE TABLE IF NOT EXISTS favorite__c (
+        |  id SERIAL NOT NULL,
+        |  property__c CHARACTER VARYING(18),
+        |  user__c CHARACTER VARYING(18)
+        |)
+      """.stripMargin))
+
+    withStatement(_.executeQuery("INSERT INTO favorite__c (property__c, user__c) VALUES ('a0236000002NHKoAAO', 'c1')"))
+    withStatement(_.executeQuery("INSERT INTO favorite__c (property__c, user__c) VALUES ('a0236000002NHKoAAO', 'c2')"))
+    withStatement(_.executeQuery("INSERT INTO favorite__c (property__c, user__c) VALUES ('a0236000002NHKvAAO', 'c2')"))
+    withStatement(_.executeQuery("INSERT INTO favorite__c (property__c, user__c) VALUES ('a0236000002NHKsAAO', 'c2')"))
+    withStatement(_.executeQuery("INSERT INTO favorite__c (property__c, user__c) VALUES ('a0236000002NHKsAAO', 'c2')"))
+    withStatement(_.executeQuery("INSERT INTO favorite__c (property__c, user__c) VALUES ('a0236000002NHKoAAO', 'c3')"))
+    withStatement(_.executeQuery("INSERT INTO favorite__c (property__c, user__c) VALUES ('a0236000002NHKpAAO', 'c3')"))
+    withStatement(_.executeQuery("INSERT INTO favorite__c (property__c, user__c) VALUES ('a0236000002NHKrAAO', 'c3')"))
+    withStatement(_.executeQuery("INSERT INTO favorite__c (property__c, user__c) VALUES ('a0236000002NHKtAAO', 'c3')"))
+  }
+
 }
 
 case class Favorite(propertyId: String, userId: String)

@@ -1,4 +1,18 @@
 [Dreamhouse](http://dreamhouseapp.io) Recommendations, [PredictionIO](http://predictionio.incubator.apache.org) Engine
 ==========================
 
-Deploy this engine to Heroku by following the steps in the [PredictionIO buildpack](https://github.com/heroku/heroku-buildpack-pio).
+# Develop Locally
+
+1. Install PredictionIO 0.9.5
+1. ???
+1. `curl -H "Content-Type: application/json" -d '{"userId": "c1", "numResults": 10 }' -k https://localhost:8000/queries.json`
+
+# Deploy on Heroku
+
+1. ???
+1. TODO: Button
+1. 
+
+# Setup Heroku Connect
+
+1. ???

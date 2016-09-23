@@ -1,4 +1,4 @@
-import io.prediction.controller.{Engine, IEngineFactory}
+import io.prediction.controller.{Engine, EngineFactory}
 
 case class Query(userId: String, numResults: Int)
 
@@ -9,7 +9,7 @@ case class ItemScore(
   score: Double
 ) extends Serializable
 
-object SimilarProductEngine extends IEngineFactory {
+object SimilarProductEngine extends EngineFactory {
   def apply() = {
     new Engine(
       classOf[DataSource],
