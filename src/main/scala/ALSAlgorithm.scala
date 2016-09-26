@@ -59,7 +59,7 @@ class ALSAlgorithm(val params: ALSAlgorithmParams) extends P2LAlgorithm[Prepared
 
     val model = ALS.train(ratings, params.rank, params.numIterations, params.lambda)
 
-    new ALSModel(model.rank, model.userFeatures.collect(), model.productFeatures.collect(), userStringIntMap, itemStringIntMap, None)
+    new ALSModel(model.rank, model.userFeatures.collect(), model.productFeatures.collect(), userStringIntMap, itemStringIntMap, Some(model))
   }
 
   def predict(model: ALSModel, query: Query): PredictedResult = {
