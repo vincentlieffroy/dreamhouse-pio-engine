@@ -1,0 +1,32 @@
+{
+  "name": "dreamhouse-pio-engine",
+  "description": "Dreamhouse PredictionIO Engine",
+  "keywords": [
+    "dreamhouse",
+    "predictionio",
+    "machinelearning"
+  ],
+  "env": {
+    "PIO_EVENTSERVER_HOSTNAME": {
+      "description": "The full hostname of the PIO Event Server"
+    },
+    "PIO_EVENTSERVER_PORT": {
+      "description": "The PIO Event Server port",
+      "value": "80"
+    },
+    "PIO_EVENTSERVER_APP_NAME": {
+      "description": "PIO Event Server App Name"
+    },
+    "PIO_EVENTSERVER_ACCESS_KEY": {
+      "description": "PIO Event Server App Access Key"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-jvm-common.git"
+    },
+    {
+      "url": "https://github.com/heroku/predictionio-buildpack.git"
+    }
+  ]
+}
