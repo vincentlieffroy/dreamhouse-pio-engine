@@ -6,6 +6,9 @@
     "predictionio",
     "machinelearning"
   ],
+  "addons": [
+    "heroku-postgresql"
+  ],
   "env": {
     "PIO_EVENTSERVER_HOSTNAME": {
       "description": "The full hostname of the PIO Event Server"
